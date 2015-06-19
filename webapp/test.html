@@ -1,0 +1,128 @@
+<html>
+<head>
+<style>
+    body { margin: 0; }
+    canvas { width: 100%; height: 100% }
+                #stats { position: absolute; top:0; left: 0 }
+            #stats #fps { background: transparent !important }
+            #stats #fps #fpsText { color: #eee !important }
+            #stats #fps #fpsGraph { display: none }
+    
+</style>
+        
+<script src="three.js"></script>
+<script src="stats.min.js"></script>
+
+<script type="text/javascript">
+function start(){
+    var eventSource = new EventSource("http://"+window.location.hostname+":9001/world_updates");
+    eventSource.addEventListener('message', function(e) {
+        var json = JSON.parse(e.data);
+        
+        if(typeof(player) == "undefined"){
+            var personTexture = THREE.ImageUtils.loadTexture("sprites/human.png");
+            var personMaterial = new THREE.MeshBasicMaterial( { map: personTexture, side:THREE.DoubleSide, transparent:true } );
+            var personGeometry = new THREE.PlaneBufferGeometry(1, 1, 1, 1);
+            
+            player = new THREE.Mesh(personGeometry, personMaterial);
+            scene.add(player)
+        }
+        player.position.z = 0.1;
+        player.position.x = json[0].position.x;
+        player.position.y = json[0].position.y;
+      }, true);
+    }
+    
+    
+function getImageData( image ) {
+    var canvas = document.createElement( 'canvas' );
+    canvas.width = image.width;
+    canvas.height = image.height;
+
+    var context = canvas.getContext( '2d' );
+    context.drawImage( image, 0, 0 );
+
+    return context.getImageData( 0, 0, image.width, image.height );
+}
+</script>
+
+
+</head>
+
+
+<body>
+<script type="text/javascript">
+    scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+    
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    container = document.createElement( 'div' );
+    stats = new Stats();
+    document.body.appendChild( container );
+    container.appendChild( stats.domElement );
+    
+    var grassTile;
+    
+    grassTexture = THREE.ImageUtils.loadTexture("sprites/grass.png");
+   // grassTexture.minFilter = THREE.LinearMipMapLinearFilter;
+    
+    var grassMaterial = new THREE.MeshBasicMaterial( { map: grassTexture, side:THREE.DoubleSide } );
+    
+    var rockTexture = THREE.ImageUtils.loadTexture("sprites/rock.png");
+    var rockMaterial = new THREE.MeshBasicMaterial( { map: rockTexture, side:THREE.DoubleSide } );
+    
+   
+        
+    var terrainImage = new Image();
+    terrainImage.src = "http://"+window.location.hostname+":9001/terrain/1/1/";
+    terrainImage.crossOrigin = "Anonymous";
+    terrainImage.onload = function(){
+        var context = document.createElement('canvas').getContext('2d');
+        context.drawImage(terrainImage, 0, 0);
+
+       // var grassGeometry = new THREE.PlaneGeometry(1, 1);
+        var grassGeometry = new THREE.PlaneBufferGeometry(1, 1, 1, 1);
+        for (var x = 0; x < terrainImage.width ; x++) {
+            for (var y = 0; y < terrainImage.height ; y++) {
+                var pixelData = context.getImageData(x, terrainImage.height-1-y, 1, 1).data;
+                
+                if(pixelData[1] == 255){
+                    var grassTile = new THREE.Mesh(grassGeometry, grassMaterial);           
+                    grassTile.position.x = x;
+                    grassTile.position.y = y;
+                    scene.add(grassTile);
+                } else if (pixelData[1] == 128) {
+                    var rockTile = new THREE.Mesh(grassGeometry, rockMaterial);           
+                    rockTile.position.x = x;
+                    rockTile.position.y = y;
+                    scene.add(rockTile);
+                }
+            }
+        }
+    }
+    camera.position.x = 16;
+    camera.position.y = 16;
+    camera.position.z = 30;
+    var render = function () {
+        requestAnimationFrame( render );
+    //    camera.rotation.z += 0.01;
+        renderer.render(scene, camera);
+        
+        stats.update();
+    };
+    
+    render();
+</script>
+
+
+Time: <span id="foo"></span>
+ 
+<br><br>
+<button onclick="start()">Start</button>
+ 
+
+</body>
+</html>
